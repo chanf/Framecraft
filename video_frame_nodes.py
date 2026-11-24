@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -21,7 +21,9 @@ except ImportError:  # pragma: no cover - 无 ComfyUI 环境时 torch 可能缺�
 
 from .video_utils import (
     VideoError,
+    VideoInfo,
     frames_to_tensor_list,
+    get_video_info,
     read_first_frame,
     read_frames,
     read_last_frame,
@@ -29,6 +31,33 @@ from .video_utils import (
 
 # 当环境无 torch 时，允许节点类仍被导入（以便本机静态检查），但执行会报错。
 _HAS_TORCH = torch is not None
+
+
+def _normalize_video_input(video):
+    """把 ComfyUI VIDEO 类型的输入归一化为视频文件路径字符串。
+
+    ComfyUI 的 VIDEO 类型有两种表现：
+    1. 字符串路径（绝对路径或相对 ComfyUI input/ 目录的相对路径）；
+    2. 视频对象（如 `VideoFromComponents`），只暴露元信息，没有直接路径。
+    对于第 2 种情况，必须先由生成该视频的节点将其写出为临时文件，
+    否则本节点无法用 OpenCV 读取；这里返回 None 并附带清晰报错信息。
+    """
+    if video is None:
+        return None
+    if isinstance(video, str):
+        return video
+    # 非字符串：可能是 VideoFromComponents 等视频对象，尝试提取路径属性
+    for attr in ("filename", "path", "temp", "temp_path", "video_path"):
+        if hasattr(video, attr):
+            value = getattr(video, attr)
+            if isinstance(value, str) and value:
+                return value
+    raise TypeError(
+        "Framecraft: `video` 输入应为字符串路径，当前为 %s。"
+        " 请确认上游节点（如 Load Video / Minimax H3 输出）连入的是视频文件路径，"
+        " 而非 VIDEO 对象本身。若上游仅输出 VIDEO 对象，需先由该节点将视频写出为文件。"
+        % type(video).__name__
+    )
 
 
 def _to_comfy_image(frames: List[np.ndarray]):
@@ -56,7 +85,8 @@ class VideoFirstFrame:
     CATEGORY = "Framecraft/Video"
 
     def extract_first_frame(self, video: str):
-        frame, info = read_first_frame(video)
+        path = _normalize_video_input(video)
+        frame, info = read_first_frame(path)
         image = _to_comfy_image([frame])
         return (
             image,
@@ -85,7 +115,8 @@ class VideoLastFrame:
     CATEGORY = "Framecraft/Video"
 
     def extract_last_frame(self, video: str):
-        frame, info = read_last_frame(video)
+        path = _normalize_video_input(video)
+        frame, info = read_last_frame(path)
         image = _to_comfy_image([frame])
         return (
             image,
@@ -133,8 +164,9 @@ class VideoFrameSplitter:
         end_frame: int = -1,
         max_frames: int = -1,
     ):
+        path = _normalize_video_input(video)
         frames, info = read_frames(
-            video,
+            path,
             frame_step=frame_step,
             start_frame=start_frame,
             end_frame=end_frame,

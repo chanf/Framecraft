@@ -31,6 +31,12 @@ from video_utils import (  # noqa: E402
     read_last_frame,
 )
 
+try:
+    from video_frame_nodes import _normalize_video_input
+except ImportError:
+    # 无法导入（无 ComfyUI 环境时 torch 缺失），跳过归一化测试
+    _normalize_video_input = None
+
 TEST_VIDEO = "/tmp/framecraft_test_video.mp4"
 
 
@@ -136,6 +142,36 @@ def main():
         assert False, "应抛出 VideoError"
     except VideoError:
         print("[OK] 起始帧超出总帧数抛出 VideoError")
+
+    # ---------- 9. _normalize_video_input 归一化测试 ----------
+    if _normalize_video_input is not None:
+        # 字符串路径直接返回
+        assert _normalize_video_input("/path/to/video.mp4") == "/path/to/video.mp4"
+        assert _normalize_video_input("relative/path.mp4") == "relative/path.mp4"
+
+        # 有路径属性的对象返回该属性
+        class FakeVideoWithPath:
+            def __init__(self):
+                self.filename = "/tmp/fake.mp4"
+        assert _normalize_video_input(FakeVideoWithPath()) == "/tmp/fake.mp4"
+
+        # VideoFromComponents 对象抛出 TypeError
+        class VideoFromComponents:
+            def __init__(self):
+                self._components = {}
+                self._video_info = {"fps": 24.0}
+        try:
+            _normalize_video_input(VideoFromComponents())
+            assert False, "VideoFromComponents 应抛出 TypeError"
+        except TypeError:
+            print("[OK] VideoFromComponents 抛出 TypeError")
+
+        # None 抛出 TypeError
+        try:
+            _normalize_video_input(None)
+            assert False, "None 应抛出 TypeError"
+        except TypeError:
+            print("[OK] None 抛出 TypeError")
 
     # 清理
     try:

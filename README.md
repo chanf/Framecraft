@@ -47,7 +47,7 @@ pip install opencv-python numpy
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `video` | `VIDEO` | 视频文件路径（可直接连接 Minimax H3 等节点输出的 video 引脚） |
+| `video` | `VIDEO` | 视频文件路径（绝对路径或相对路径）。可连接 `Load Video` 等输出视频文件路径的节点；若上游节点仅输出 `VIDEO` 对象（如 `VideoFromComponents`），需先将视频写出为文件后再连入。 |
 
 **输出**
 
@@ -66,7 +66,7 @@ pip install opencv-python numpy
 
 | 参数 | 类型 | 默认 | 说明 |
 |------|------|------|------|
-| `video` | `VIDEO` | — | 视频文件路径（可直接连接 Minimax H3 等节点输出的 video 引脚） |
+| `video` | `VIDEO` | — | 视频文件路径（绝对路径或相对路径）。可连接 `Load Video` 等输出视频文件路径的节点；若上游节点仅输出 `VIDEO` 对象（如 `VideoFromComponents`），需先将视频写出为文件后再连入。 |
 | `frame_step` | `INT` | `1` | 采样间隔，每 `step` 帧取一帧（≥1） |
 | `start_frame` | `INT` | `0` | 起始帧索引（≥0） |
 | `end_frame` | `INT` | `-1` | 结束帧索引（含），`-1` 表示到视频末尾 |
@@ -114,6 +114,7 @@ Framecraft/
 ## 注意事项
 
 - 视频路径必须为本机可访问的文件路径；ComfyUI 的 `Load Video` 节点输出的路径可直接接入本节点的 `video` 输入。
+- ComfyUI 的 `VIDEO` 类型有两种形态：字符串路径（`str`）和视频对象（如 `VideoFromComponents`）。本节点仅支持字符串路径；若上游节点输出的是 `VIDEO` 对象，需先将视频写出为临时文件（例如通过 `VHS_VideoCombine` 等节点），再将文件路径连入本节点。
 - 某些视频编码对“按索引定位”支持不佳，`Video Last Frame` 在定位失败时会自动回退到逐帧读取直到末尾，保证能取到最后一帧。
 - 输出图像为 RGB；如需 BGR，可在后续节点中自行转换。
 
