@@ -19,13 +19,13 @@
 
 ## 3. 节点设计
 
-### 3.1 共享输入：视频文件路径
+### 3.1 共享输入：视频文件路径或 VIDEO 对象
 
-所有节点共用一个 `video` 输入：
+所有节点共用一个 `video` 输入，类型为 ComfyUI 原生 `VIDEO`：
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `video` | `STRING` | 视频文件绝对路径（或相对 ComfyUI `input/` 的路径） |
+| `video` | `VIDEO` | 视频文件绝对路径（`str`，或相对 ComfyUI `input/` 的路径），或 ComfyUI 原生 `VIDEO` 对象（如 `VideoFromComponents`）。连入 `VIDEO` 对象时，节点直接读取 `get_components().images` 张量，无需落地临时文件。 |
 
 ### 3.2 节点 A：VideoFirstFrame（首帧）
 

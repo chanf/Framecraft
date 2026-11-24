@@ -33,19 +33,66 @@ from .video_utils import (
 _HAS_TORCH = torch is not None
 
 
+def _is_video_object(video) -> bool:
+    """判断输入是否为 ComfyUI 原生 VIDEO 对象（而非字符串路径）。
+
+    原生 VIDEO 对象暴露 `get_components()`，其返回对象包含 `images` 张量。
+    字符串路径和普通对象都不满足此条件。
+    """
+    get_components = getattr(video, "get_components", None)
+    if not callable(get_components):
+        return False
+    try:
+        components = get_components()
+    except Exception:
+        return False
+    return getattr(components, "images", None) is not None
+
+
+def _read_video_object_frames(video) -> "torch.Tensor":
+    """从 ComfyUI 原生 VIDEO 对象读取帧张量 [N, H, W, C]。
+
+    直接复用 VIDEO.get_components().images，不落地临时 MP4 文件，也不调用 ffmpeg。
+    这与 ComfyUI-VideoLastFrame 的处理方式一致，可处理 Minimax H3 等节点输出的
+    VideoFromComponents 对象。
+    """
+    if torch is None:
+        raise RuntimeError("未安装 torch，无法从 VIDEO 对象读取帧")
+    components = video.get_components()
+    frames = getattr(components, "images", None)
+    if frames is None:
+        raise ValueError("VIDEO 组件不包含 images 张量")
+    if not isinstance(frames, torch.Tensor):
+        raise TypeError(
+            "VIDEO components.images 必须是 torch.Tensor；"
+            f" received {type(frames).__name__}."
+        )
+    if frames.ndim != 4:
+        raise ValueError(
+            "期望 ComfyUI IMAGE 布局 [frames, height, width, channels]，"
+            f" received shape {tuple(frames.shape)}."
+        )
+    if frames.shape[0] < 1:
+        raise ValueError("输入视频不含任何帧。")
+    return frames
+
+
 def _normalize_video_input(video):
     """把 ComfyUI VIDEO 类型的输入归一化为视频文件路径字符串。
 
     ComfyUI 的 VIDEO 类型有两种表现：
     1. 字符串路径（绝对路径或相对 ComfyUI input/ 目录的相对路径）；
     2. 视频对象（如 `VideoFromComponents`），只暴露元信息，没有直接路径。
-    对于第 2 种情况，必须先由生成该视频的节点将其写出为临时文件，
-    否则本节点无法用 OpenCV 读取；这里返回 None 并附带清晰报错信息。
+    对于第 2 种情况，若直接用 OpenCV 读取会因非字符串路径而失败；
+    这里返回 None 并附带清晰报错信息，提示上游需先将视频写出为文件。
     """
     if video is None:
         return None
     if isinstance(video, str):
         return video
+    # 若是原生 VIDEO 对象，不强制要求路径；调用方应改用 _read_video_object_frames 读取帧。
+    if _is_video_object(video):
+        return None
     # 非字符串：可能是 VideoFromComponents 等视频对象，尝试提取路径属性
     for attr in ("filename", "path", "temp", "temp_path", "video_path"):
         if hasattr(video, attr):
@@ -84,7 +131,19 @@ class VideoFirstFrame:
     FUNCTION = "extract_first_frame"
     CATEGORY = "Framecraft/Video"
 
-    def extract_first_frame(self, video: str):
+    def extract_first_frame(self, video):
+        # 原生 VIDEO 对象：直接从其 frames 张量取首帧，无需落地临时文件
+        if _is_video_object(video):
+            frames = _read_video_object_frames(video)
+            image = frames[:1]
+            return (
+                image,
+                frames.shape[0],  # frame_count
+                0.0,              # fps (未知，VIDEO 对象不携带帧率)
+                frames.shape[2],  # width
+                frames.shape[1],  # height
+                "",               # filename (未知，VIDEO 对象不携带文件名)
+            )
         path = _normalize_video_input(video)
         frame, info = read_first_frame(path)
         image = _to_comfy_image([frame])
@@ -114,7 +173,19 @@ class VideoLastFrame:
     FUNCTION = "extract_last_frame"
     CATEGORY = "Framecraft/Video"
 
-    def extract_last_frame(self, video: str):
+    def extract_last_frame(self, video):
+        # 原生 VIDEO 对象：直接从其 frames 张量取末帧，无需落地临时文件
+        if _is_video_object(video):
+            frames = _read_video_object_frames(video)
+            image = frames[-1:]
+            return (
+                image,
+                frames.shape[0],  # frame_count
+                0.0,              # fps (未知，VIDEO 对象不携带帧率)
+                frames.shape[2],  # width
+                frames.shape[1],  # height
+                "",               # filename (未知，VIDEO 对象不携带文件名)
+            )
         path = _normalize_video_input(video)
         frame, info = read_last_frame(path)
         image = _to_comfy_image([frame])
@@ -158,12 +229,37 @@ class VideoFrameSplitter:
 
     def split_frames(
         self,
-        video: str,
+        video,
         frame_step: int = 1,
         start_frame: int = 0,
         end_frame: int = -1,
         max_frames: int = -1,
     ):
+        # 原生 VIDEO 对象：直接从其 frames 张量取全部帧作为 IMAGE Batch
+        if _is_video_object(video):
+            frames_tensor = _read_video_object_frames(video)
+            # 按 start_frame / end_frame / max_frames 做采样切片（frame_step 保留语义）
+            total = frames_tensor.shape[0]
+            if start_frame < 0:
+                start_frame = 0
+            if end_frame < 0 or end_frame >= total:
+                end_frame = total - 1
+            if start_frame >= total:
+                raise ValueError(
+                    f"起始帧 {start_frame} 超出视频总帧数 {total}。"
+                )
+            sampled = frames_tensor[start_frame : end_frame + 1 : max(frame_step, 1)]
+            if max_frames > 0:
+                sampled = sampled[:max_frames]
+            return (
+                sampled,
+                sampled.shape[0],  # frame_count (实际输出帧数)
+                total,             # total_frames (视频总帧数)
+                0.0,               # fps (未知，VIDEO 对象不携带帧率)
+                sampled.shape[2],  # width
+                sampled.shape[1],  # height
+                "",                # filename (未知，VIDEO 对象不携带文件名)
+            )
         path = _normalize_video_input(video)
         frames, info = read_frames(
             path,
