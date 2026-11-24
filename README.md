@@ -47,7 +47,7 @@ pip install opencv-python numpy
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `video` | `STRING` | 视频文件路径（绝对路径，或相对 ComfyUI `input/` 目录的路径） |
+| `video` | `VIDEO` | 视频文件路径（可直接连接 Minimax H3 等节点输出的 video 引脚） |
 
 **输出**
 
@@ -66,7 +66,7 @@ pip install opencv-python numpy
 
 | 参数 | 类型 | 默认 | 说明 |
 |------|------|------|------|
-| `video` | `STRING` | — | 视频文件路径 |
+| `video` | `VIDEO` | — | 视频文件路径（可直接连接 Minimax H3 等节点输出的 video 引脚） |
 | `frame_step` | `INT` | `1` | 采样间隔，每 `step` 帧取一帧（≥1） |
 | `start_frame` | `INT` | `0` | 起始帧索引（≥0） |
 | `end_frame` | `INT` | `-1` | 结束帧索引（含），`-1` 表示到视频末尾 |

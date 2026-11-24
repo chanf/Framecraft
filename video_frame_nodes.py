@@ -46,7 +46,7 @@ class VideoFirstFrame:
     def INPUT_TYPES(cls) -> Dict:
         return {
             "required": {
-                "video": ("STRING", {"default": ""}),
+                "video": ("VIDEO", {"default": ""}),
             }
         }
 
@@ -75,7 +75,7 @@ class VideoLastFrame:
     def INPUT_TYPES(cls) -> Dict:
         return {
             "required": {
-                "video": ("STRING", {"default": ""}),
+                "video": ("VIDEO", {"default": ""}),
             }
         }
 
@@ -104,7 +104,7 @@ class VideoFrameSplitter:
     def INPUT_TYPES(cls) -> Dict:
         return {
             "required": {
-                "video": ("STRING", {"default": ""}),
+                "video": ("VIDEO", {"default": ""}),
                 "frame_step": ("INT", {"default": 1, "min": 1, "max": 1000, "step": 1}),
                 "start_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
                 "end_frame": ("INT", {"default": -1, "min": -1, "max": 1000000, "step": 1}),
