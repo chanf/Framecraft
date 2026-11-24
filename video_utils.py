@@ -111,15 +111,14 @@ def read_last_frame(path: str) -> Tuple[np.ndarray, VideoInfo]:
             # 简单校验：定位读取通常可信，直接返回。
             return frame, info
 
-        # 回退：逐帧读取，保留最后一帧。
+        # 回退：从头开始逐帧读取，保留最后一帧。
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         last_frame: Optional[np.ndarray] = None
-        index = 0
         while True:
             ok, raw = cap.read()
             if not ok or raw is None:
                 break
             last_frame = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB)
-            index += 1
         if last_frame is None:
             raise VideoError(f"读取末帧失败: {path}")
         return last_frame, info

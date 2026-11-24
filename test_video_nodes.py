@@ -116,7 +116,11 @@ def main():
     for t in tensors:
         assert t.shape == (1, 64, 64, 3), f"张量形状应为 (1,64,64,3)，实际 {t.shape}"
         assert t.min() >= 0.0 and t.max() <= 1.0, "张量值域应在 [0,1] 之间"
-        assert t.dtype == np.float32, f"张量 dtype 应为 float32，实际 {t.dtype}"
+        # torch 环境下是 torch.float32，无 torch 环境下是 np.float32
+        if is_torch:
+            assert t.dtype == torch.float32, f"张量 dtype 应为 float32，实际 {t.dtype}"
+        else:
+            assert t.dtype == np.float32, f"张量 dtype 应为 float32，实际 {t.dtype}"
     print("[OK] frames_to_tensor_list：形状 (1,64,64,3)，值域 [0,1]，dtype float32")
 
     # ---------- 7. 错误情况：不存在的文件 ----------

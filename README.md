@@ -14,11 +14,16 @@ ComfyUI 自定义节点集，用于从视频中提取首帧、末帧，或按间
 
 ## 安装
 
-将 `custom_nodes/FramecraftVideoNodes/` 拷贝到 ComfyUI 的 `custom_nodes/` 目录，然后重启 ComfyUI：
+将根目录下的插件文件（`__init__.py`、`video_frame_nodes.py`、`video_utils.py`、`requirements.txt`）拷贝到 ComfyUI 的 `custom_nodes/` 子目录（例如 `custom_nodes/FramecraftVideoNodes/`），然后重启 ComfyUI：
 
 ```bash
 # 在 ComfyUI 根目录下
-cp -r /path/to/Framecraft/custom_nodes/FramecraftVideoNodes custom_nodes/
+mkdir -p custom_nodes/FramecraftVideoNodes
+cp /path/to/Framecraft/__init__.py \
+   /path/to/Framecraft/video_frame_nodes.py \
+   /path/to/Framecraft/video_utils.py \
+   /path/to/Framecraft/requirements.txt \
+   custom_nodes/FramecraftVideoNodes/
 # 重启 ComfyUI
 ```
 
@@ -89,7 +94,7 @@ pip install opencv-python numpy
 包含 `test_video_nodes.py`，可在无 ComfyUI 环境下用 OpenCV 验证帧抽取逻辑：
 
 ```bash
-python3 custom_nodes/FramecraftVideoNodes/test_video_nodes.py
+python3 test_video_nodes.py
 ```
 
 ## 文件结构
@@ -97,14 +102,13 @@ python3 custom_nodes/FramecraftVideoNodes/test_video_nodes.py
 ```
 Framecraft/
 ├── README.md                        # 本文件
-├── design.md                        # 设计文档
-└── custom_nodes/
-    └── FramecraftVideoNodes/
-        ├── __init__.py              # ComfyUI 节点注册入口
-        ├── video_frame_nodes.py     # 三个节点类实现
-        ├── video_utils.py           # OpenCV 视频读取工具
-        ├── test_video_nodes.py      # 独立逻辑测试脚本（无需 ComfyUI）
-        └── README.md                # 节点目录说明
+├── docs/
+│   └── design.md                    # 设计文档
+├── __init__.py                      # ComfyUI 节点注册入口
+├── video_frame_nodes.py             # 三个节点类实现
+├── video_utils.py                   # OpenCV 视频读取工具
+├── test_video_nodes.py              # 独立逻辑测试脚本（无需 ComfyUI）
+└── requirements.txt                 # opencv-python, numpy
 ```
 
 ## 注意事项

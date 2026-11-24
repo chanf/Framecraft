@@ -106,13 +106,15 @@ Batch 堆叠：`torch.stack(frames, dim=0)` → `[N, H, W, 3]`。
 ## 5. 文件结构
 
 ```
-custom_nodes/FramecraftVideoNodes/
-├── __init__.py            # 注册 NODE_CLASS_MAPPINGS / DISPLAY_NAME_MAPPINGS
-├── video_frame_nodes.py   # 三个节点类实现
-├── video_utils.py         # OpenCV 视频读取工具（可独立于 ComfyUI 使用）
-├── test_video_nodes.py    # 独立逻辑测试脚本（无需 ComfyUI，本机可直接运行）
-├── requirements.txt       # opencv-python, numpy, torch（可选）
-└── README.md              # 安装与使用说明
+Framecraft/
+├── README.md                        # 项目说明与安装
+├── docs/
+│   └── design.md                    # 本文件
+├── __init__.py                      # ComfyUI 节点注册入口
+├── video_frame_nodes.py             # 三个节点类实现
+├── video_utils.py                   # OpenCV 视频读取工具（可独立于 ComfyUI 使用）
+├── test_video_nodes.py              # 独立逻辑测试脚本（无需 ComfyUI，本机可直接运行）
+└── requirements.txt                 # opencv-python, numpy, torch（可选）
 ```
 
 ## 6. 注册入口（__init__.py）
@@ -128,7 +130,7 @@ __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 因为本机无 ComfyUI，验证分两阶段：
 
 1. **本机（当前环境）**：运行 `test_video_nodes.py`，用 OpenCV 对一段测试视频分别验证首帧、末帧、拆解帧的输出形状、数值范围、帧数正确性；如无测试视频，用 OpenCV 生一段彩色测试视频再验证。
-2. **ComfyUI 环境就绪后**：将 `FramecraftVideoNodes/` 拷入 `custom_nodes/`，重启 ComfyUI，在工作流中连接 `Load Video` → 节点 → `Preview Image` 确认图像正常显示。
+2. **ComfyUI 环境就绪后**：将根目录下的插件文件（`__init__.py`、`video_frame_nodes.py`、`video_utils.py`、`requirements.txt`）拷入 `custom_nodes/FramecraftVideoNodes/`，重启 ComfyUI，在工作流中连接 `Load Video` → 节点 → `Preview Image` 确认图像正常显示。
 
 ## 8. 边界情况与错误处理
 
