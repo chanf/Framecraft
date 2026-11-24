@@ -1,0 +1,7 @@
+opencv-python
+numpy
+
+# torch is provided by the ComfyUI environment and does not need to be
+# installed separately here. Uncomment if you run this plugin outside
+# ComfyUI and need torch for IMAGE tensor conversion.
+# torch
